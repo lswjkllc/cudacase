@@ -81,7 +81,7 @@ int main() {
     // Copy the result back to the host 
     cudaMemcpy(Ret_1, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
     // Print the result
-    std::cout << "Native 2dmm CUDA Result   : ";
+    std::cout << "Native    2dmm CUDA Result: ";
     equalResult(Ret_1, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
 
     // --------------------- shared memory 2D matrix multiplication ------------------------
@@ -91,9 +91,10 @@ int main() {
         Ret_2[i] = 0.0f;
     }
     // Call the CUDA matrix multiplication function
+    const int BLOCK_SIZE_K = 8;
     dim3 blocksPerGrid_2(M / BLOCK_SIZE_K, N / BLOCK_SIZE_K);
     dim3 threadsPerBlock_2(BLOCK_SIZE_K, BLOCK_SIZE_K);
-    SgemmWithSharedmem<<<blocksPerGrid_2, threadsPerBlock_2>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithSharedmem<BLOCK_SIZE_K><<<blocksPerGrid_2, threadsPerBlock_2>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host
