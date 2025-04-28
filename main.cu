@@ -83,6 +83,8 @@ int main() {
     // Print the result
     std::cout << "Native    2dmm CUDA Result: ";
     equalResult(Ret_1, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
+    // Free the result matrix
+    free(Ret_1);
 
     // --------------------- shared memory 2D matrix multiplication ------------------------
     // Define the result matrix
@@ -102,11 +104,18 @@ int main() {
     // Print the result
     std::cout << "Sharedmem 2dmm CUDA Result: ";
     equalResult(Ret_2, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
+    // Free the result matrix
+    free(Ret_2);
 
     // Free device memory
     cudaFree(d_A);  
     cudaFree(d_B);
     cudaFree(d_C);
+
+    // Free host memory
+    free(A);
+    free(B);
+    free(C);
 
     return EXIT_SUCCESS;
 }
