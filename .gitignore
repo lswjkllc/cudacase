@@ -4,3 +4,17 @@
 *.ptx
 *.cubin
 *.fatbin
+
+.vscode/
+.idea/
+
+build/
+dist/
+*.egg-info/
+*.egg
+
+__pycache__/
+venv/
+.venv/
+
+local/
