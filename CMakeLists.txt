@@ -10,5 +10,6 @@ add_executable(cudacase
     main.cu
     csrc/host/gemm.cc
     csrc/device/gemm/native_2dmm.cu
+    csrc/device/gemm/sharedmem_2dmm.cu
 )
 target_include_directories(cudacase PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
