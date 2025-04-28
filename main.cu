@@ -75,7 +75,7 @@ int main() {
     // Call the CUDA matrix multiplication function
     dim3 blocksPerGrid_1(1);
     dim3 threadsPerBlock_1(M * N);
-    matrix_multiply_cuda_naive<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithNative<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host 
