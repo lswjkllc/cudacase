@@ -27,7 +27,7 @@ bool equalResult(int *A, int *B, int M, int N) {
 
 int main() {
     // Initialize matrices A, B, and C
-    const int M = 512, N = 256, K = 128;
+    constexpr int M = 512, N = 256, K = 128;
 
     int *A, *B, *C;
     // Allocate host memory
@@ -65,6 +65,11 @@ int main() {
     cudaMemcpy(d_A, A, M * K * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, B, K * N * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_C, C, M * N * sizeof(int), cudaMemcpyHostToDevice);
+    
+    // ------------------------ calculate grid and block size ---------------------------------------------
+    constexpr int BLOCK_SIZE = 16;
+    dim3 grid((M + BLOCK_SIZE - 1) / BLOCK_SIZE, (N + BLOCK_SIZE - 1) / BLOCK_SIZE); // celi value
+    dim3 block(BLOCK_SIZE, BLOCK_SIZE); // 16 * 16 = 256 threads per block
 
     // ------------------------ global memory 2D matrix multiplication ---------------------------------------------
     // Define the result matrix
@@ -73,10 +78,7 @@ int main() {
         Ret_1[i] = 0;
     }
     // Call the CUDA matrix multiplication function
-    constexpr int BLOCK = 16;
-    dim3 blocksPerGrid_1((M + BLOCK - 1) / BLOCK, (N + BLOCK - 1) / BLOCK); // celi value
-    dim3 threadsPerBlock_1(BLOCK, BLOCK);
-    SgemmWithGlobalmem<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithGlobalmem<<<grid, block>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host 
@@ -94,10 +96,7 @@ int main() {
         Ret_2[i] = 0;
     }
     // Call the CUDA matrix multiplication function
-    const int BLOCK_SIZE_K = 8;
-    dim3 blocksPerGrid_2(M / BLOCK_SIZE_K, N / BLOCK_SIZE_K);
-    dim3 threadsPerBlock_2(BLOCK_SIZE_K, BLOCK_SIZE_K);
-    SgemmWithSharedmem<BLOCK_SIZE_K><<<blocksPerGrid_2, threadsPerBlock_2>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithSharedmem<BLOCK_SIZE><<<grid, block>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host
