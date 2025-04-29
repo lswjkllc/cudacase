@@ -2,8 +2,8 @@
 # include <cuda_runtime.h>
 
 # include "host/gemm.h"
-# include "device/gemm/globalmem_2dmm.cuh"
-# include "device/gemm/sharedmem_2dmm.cuh"
+# include "cuda/gemm/globalmem_2dmm.cuh"
+# include "cuda/gemm/sharedmem_2dmm.cuh"
 
 void printReult(int *C, int M, int N) {
     for (int i = 0; i < M; ++i) {
