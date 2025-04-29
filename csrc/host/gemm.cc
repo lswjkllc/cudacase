@@ -1,11 +1,11 @@
 
-void matrix_multiply_cpu(int *A, int *B, int *C, int M, int N, int K) {
-    for (int i = 0; i < M; ++i)
-        for (int j = 0; j < N; ++j) {
+void SgemmWithCPU(int *A, int *B, int *C, int M, int N, int K) {
+    for (int m = 0; m < M; ++m)
+        for (int n = 0; n < N; ++n) {
             int sum = 0;
-            for (int h = 0; h < K; ++h) {
-                sum += A[i * K + h] * B[h * N + j];
+            for (int k = 0; k < K; ++k) {
+                sum += A[m * K + k] * B[k * N + n];
             }
-            C[i * N + j] = sum;
+            C[m * N + n] = sum;
         }
 }

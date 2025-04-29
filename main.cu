@@ -2,7 +2,7 @@
 # include <cuda_runtime.h>
 
 # include "host/gemm.h"
-# include "device/gemm/native_2dmm.cuh"
+# include "device/gemm/globalmem_2dmm.cuh"
 # include "device/gemm/sharedmem_2dmm.cuh"
 
 void printReult(int *C, int M, int N) {
@@ -36,24 +36,24 @@ int main() {
     C = (int*)malloc(M * N * sizeof(int));
     // Initialize matrices A and B with some values
     for (int i = 0; i < M * K; ++i) {
-        A[i] = 1;
+        A[i] = i;
     }
     for (int i = 0; i < K * N; ++i) {
-        B[i] = 1;
+        B[i] = i;
     }
     for (int i = 0; i < M * N; ++i) {
-        C[i] = 0.0f;
+        C[i] = 0;
     }
     // int A[M * K] = {1, 2, 3, 4, 5, 6, 7, 8};
     // int B[K * N] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
     // int C[M * N] = {0};
 
     // Call the matrix multiplication function
-    matrix_multiply_cpu(A, B, C, M, N, K);
-    // Print the result
-    std::cout << "HOST Result: " << std::endl;
-    printReult(C, M, N);
-    std::cout << std::endl;
+    SgemmWithCPU(A, B, C, M, N, K);
+    // // Print the result
+    // std::cout << "HOST Result: " << std::endl;
+    // printReult(C, M, N);
+    // std::cout << std::endl;
 
     // Call the CUDA matrix multiplication function
     int *d_A, *d_B, *d_C;
@@ -66,31 +66,31 @@ int main() {
     cudaMemcpy(d_B, B, K * N * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_C, C, M * N * sizeof(int), cudaMemcpyHostToDevice);
 
-    // ------------------------ naive 2D matrix multiplication ------------------------
+    // ------------------------ global memory 2D matrix multiplication ---------------------------------------------
     // Define the result matrix
     int *Ret_1 = (int*)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
-        Ret_1[i] = 0.0f;
+        Ret_1[i] = 0;
     }
     // Call the CUDA matrix multiplication function
     dim3 blocksPerGrid_1(1);
     dim3 threadsPerBlock_1(M * N);
-    SgemmWithNative<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithGlobalmem<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host 
     cudaMemcpy(Ret_1, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
     // Print the result
-    std::cout << "Native    2dmm CUDA Result: ";
+    std::cout << "Global memory 2dmm CUDA Result: ";
     equalResult(Ret_1, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
     // Free the result matrix
     free(Ret_1);
 
-    // --------------------- shared memory 2D matrix multiplication ------------------------
+    // --------------------- shared memory 2D matrix multiplication ------------------------------------------------
     // Define the result matrix
     int *Ret_2 = (int*)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
-        Ret_2[i] = 0.0f;
+        Ret_2[i] = 0;
     }
     // Call the CUDA matrix multiplication function
     const int BLOCK_SIZE_K = 8;
@@ -102,10 +102,12 @@ int main() {
     // Copy the result back to the host
     cudaMemcpy(Ret_2, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
     // Print the result
-    std::cout << "Sharedmem 2dmm CUDA Result: ";
+    std::cout << "Shared memory 2dmm CUDA Result: ";
     equalResult(Ret_2, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
     // Free the result matrix
     free(Ret_2);
+
+    // --------------------------- free device/host memory ---------------------------------------------------------
 
     // Free device memory
     cudaFree(d_A);  

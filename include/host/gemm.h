@@ -1,2 +1,6 @@
+#ifndef CPU_GEMM_H
+#define CPU_GEMM_H
 
-void matrix_multiply_cpu(int *A, int *B, int *C, int M, int N, int K);
+void SgemmWithCPU(int *A, int *B, int *C, int M, int N, int K);
+
+#endif // CPU_GEMM_H
