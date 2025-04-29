@@ -27,7 +27,7 @@ bool equalResult(int *A, int *B, int M, int N) {
 
 int main() {
     // Initialize matrices A, B, and C
-    const int M = 32, N = 16, K = 8;
+    const int M = 512, N = 256, K = 128;
 
     int *A, *B, *C;
     // Allocate host memory
@@ -73,8 +73,9 @@ int main() {
         Ret_1[i] = 0;
     }
     // Call the CUDA matrix multiplication function
-    dim3 blocksPerGrid_1(1);
-    dim3 threadsPerBlock_1(M * N);
+    constexpr int BLOCK = 16;
+    dim3 blocksPerGrid_1((M + BLOCK - 1) / BLOCK, (N + BLOCK - 1) / BLOCK); // celi value
+    dim3 threadsPerBlock_1(BLOCK, BLOCK);
     SgemmWithGlobalmem<<<blocksPerGrid_1, threadsPerBlock_1>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
