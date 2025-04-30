@@ -6,6 +6,8 @@
 # include "cuda/gemm/globalmem_2dmm.cuh"
 # include "cuda/gemm/sharedmem_2dmm.cuh"
 
+# define FLOAT_DIFF_EPSILON 1e-5
+
 void printReult(float *C, int M, int N) {
     for (int i = 0; i < M; ++i) {
         for (int j = 0; j < N; ++j) {
@@ -22,7 +24,7 @@ bool equalResult(const float *A, const float *B, int M, int N) {
             a = A[i * N + j];
             b = B[i * N + j];
             diff = fabs(a - b);
-            if (diff >= 1e-5) {
+            if (diff >= FLOAT_DIFF_EPSILON) {
                 return false;
             }
         }
