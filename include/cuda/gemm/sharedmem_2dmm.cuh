@@ -4,14 +4,14 @@
 # include <cuda_runtime.h>
 
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmem(int *A, int *B, int *C, int M, int N,int K);
+__global__ void SgemmWithSharedmem(float *A, float *B, float *C, int M, int N,int K);
 
 // 矩阵乘法分块
 // 把数据搬到更快的存储器中（比如共享内存），共享内存的大小有限，利用分块实现对共享内存的利用
 // grid : (M/BLOCK_SIZE,N/BLOCK_SIZE)
 // block: (BLOCK_SIZE, BLOCK_SIZE)
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmem(int *A, int *B, int *C, int M, int N,int K) {
+__global__ void SgemmWithSharedmem(float *A, float *B, float *C, int M, int N,int K) {
     // Calculate the row and column indices for the output matrix C
     int row = threadIdx.x + blockIdx.x * blockDim.x;
     int col = threadIdx.y + blockIdx.y * blockDim.y;
@@ -19,8 +19,8 @@ __global__ void SgemmWithSharedmem(int *A, int *B, int *C, int M, int N,int K) {
         return;
 
     // // Calculate the start address in A and B for the current block
-    // int *A_start = A + blockDim.x * blockIdx.x * K;
-    // int *B_start = B + blockDim.y * blockIdx.y;
+    // float *A_start = A + blockDim.x * blockIdx.x * K;
+    // float *B_start = B + blockDim.y * blockIdx.y;
 
     // Define the shared memory for A and B;
     // Each block share the shared memory for it's threads;

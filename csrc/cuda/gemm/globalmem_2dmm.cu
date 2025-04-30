@@ -3,7 +3,7 @@
 // 矩阵乘法的逐点实现方式
 // 对于矩阵A（m * k）和矩阵B（k * n），每个元素访问的次数分别是n与m。这里存在着对全局内存的多次访问
 // 2D
-__global__ void SgemmWithGlobalmem(int *A, int *B, int *C, int M, int N,int K) {
+__global__ void SgemmWithGlobalmem(float *A, float *B, float *C, int M, int N,int K) {
     // // Impl Method One: ----------------------------------------------------------------------
     // // Calculate the row and column indices for the output matrix C
     // int row = threadIdx.x + blockIdx.x * blockDim.x;
@@ -28,8 +28,8 @@ __global__ void SgemmWithGlobalmem(int *A, int *B, int *C, int M, int N,int K) {
     if (row >= M || col >= N)
         return;
     // Caluculate the start address in A and B for the current block
-    int *A_start = A + blockDim.x * blockIdx.x * K;
-    int *B_start = B + blockDim.y * blockIdx.y;
+    float *A_start = A + blockDim.x * blockIdx.x * K;
+    float *B_start = B + blockDim.y * blockIdx.y;
     // Calculate the element value of C
     int sum = 0;
     for (int k = 0; k < K; k++) {

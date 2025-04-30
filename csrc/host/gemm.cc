@@ -1,5 +1,5 @@
 
-void SgemmWithCPU(int *A, int *B, int *C, int M, int N, int K) {
+void SgemmWithCPU(float *A, float *B, float *C, int M, int N, int K) {
     for (int m = 0; m < M; ++m)
         for (int n = 0; n < N; ++n) {
             int sum = 0;

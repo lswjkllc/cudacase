@@ -1,11 +1,12 @@
 # include <iostream>
+# include <cmath>
 # include <cuda_runtime.h>
 
 # include "host/gemm.h"
 # include "cuda/gemm/globalmem_2dmm.cuh"
 # include "cuda/gemm/sharedmem_2dmm.cuh"
 
-void printReult(int *C, int M, int N) {
+void printReult(float *C, int M, int N) {
     for (int i = 0; i < M; ++i) {
         for (int j = 0; j < N; ++j) {
             std::cout << C[i * N + j] << " ";
@@ -14,10 +15,14 @@ void printReult(int *C, int M, int N) {
     }
 }
 
-bool equalResult(int *A, int *B, int M, int N) {
+bool equalResult(const float *A, const float *B, int M, int N) {
+    float a, b, diff;
     for (int i = 0; i < M; ++i) {
         for (int j = 0; j < N; ++j) {
-            if (A[i * N + j] != B[i * N + j]) {
+            a = A[i * N + j];
+            b = B[i * N + j];
+            diff = fabs(a - b);
+            if (diff >= 1e-5) {
                 return false;
             }
         }
@@ -29,20 +34,20 @@ int main() {
     // Initialize matrices A, B, and C
     constexpr int M = 512, N = 256, K = 128;
 
-    int *A, *B, *C;
+    float *A, *B, *C;
     // Allocate host memory
-    A = (int*)malloc(M * K * sizeof(int));
-    B = (int*)malloc(K * N * sizeof(int));
-    C = (int*)malloc(M * N * sizeof(int));
+    A = (float *)malloc(M * K * sizeof(int));
+    B = (float *)malloc(K * N * sizeof(int));
+    C = (float *)malloc(M * N * sizeof(int));
     // Initialize matrices A and B with some values
     for (int i = 0; i < M * K; ++i) {
-        A[i] = i;
+        A[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
     }
     for (int i = 0; i < K * N; ++i) {
-        B[i] = i;
+        B[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
     }
     for (int i = 0; i < M * N; ++i) {
-        C[i] = 0;
+        C[i] = static_cast<float>(0);
     }
     // int A[M * K] = {1, 2, 3, 4, 5, 6, 7, 8};
     // int B[K * N] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
@@ -56,7 +61,7 @@ int main() {
     // std::cout << std::endl;
 
     // Call the CUDA matrix multiplication function
-    int *d_A, *d_B, *d_C;
+    float *d_A, *d_B, *d_C;
     // Allocate device memory
     cudaMalloc((void**)&d_A, M * K * sizeof(int));
     cudaMalloc((void**)&d_B, K * N * sizeof(int));
@@ -73,7 +78,7 @@ int main() {
 
     // ------------------------ global memory 2D matrix multiplication ---------------------------------------------
     // Define the result matrix
-    int *Ret_1 = (int*)malloc(M * N * sizeof(int));
+    float *Ret_1 = (float *)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
         Ret_1[i] = 0;
     }
@@ -91,7 +96,7 @@ int main() {
 
     // --------------------- shared memory 2D matrix multiplication ------------------------------------------------
     // Define the result matrix
-    int *Ret_2 = (int*)malloc(M * N * sizeof(int));
+    float *Ret_2 = (float *)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
         Ret_2[i] = 0;
     }
