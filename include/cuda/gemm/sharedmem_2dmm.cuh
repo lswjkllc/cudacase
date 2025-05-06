@@ -4,14 +4,17 @@
 # include <cuda_runtime.h>
 
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmem(float *A, float *B, float *C, int M, int N,int K);
+__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,int K);
+
+template <const int BLOCK_SIZE, const int STRIDE>
+__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N,int K);
 
 // 矩阵乘法分块
 // 把数据搬到更快的存储器中（比如共享内存），共享内存的大小有限，利用分块实现对共享内存的利用
 // grid : (M/BLOCK_SIZE,N/BLOCK_SIZE)
 // block: (BLOCK_SIZE, BLOCK_SIZE)
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmem(float *A, float *B, float *C, int M, int N,int K) {
+__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,int K) {
     // Calculate the row and column indices for the output matrix C
     int row = threadIdx.x + blockIdx.x * blockDim.x;
     int col = threadIdx.y + blockIdx.y * blockDim.y;
@@ -63,6 +66,91 @@ __global__ void SgemmWithSharedmem(float *A, float *B, float *C, int M, int N,in
 
     // Store the result in the output matrix C: to HBM
     C[row * N + col] = sum;
+}
+
+// Based on SgemmWithSharedmemV1, let each thread process more data, the increased stride is: STRIDE
+// Each thread's data: STRIDE * STRIDE
+// Each thread's step: BLOCK_SIZE * STRIDE
+template <const int BLOCK_SIZE, const int STRIDE>
+__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N,int K) {
+    // Rename the thread index for better readability
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    // Calculate the row and column indices for the output matrix C
+    int row = tx + blockIdx.x * blockDim.x;
+    int col = ty + blockIdx.y * blockDim.y;
+
+    // // Calculate the start address in A and B for the current block
+    // float *A_start = A + blockDim.x * blockIdx.x * K;
+    // float *B_start = B + blockDim.y * blockIdx.y;
+
+    const int STEP = BLOCK_SIZE * STRIDE;
+    __shared__ int smem_a[STEP][STEP];
+    __shared__ int smem_b[STEP][STEP];
+
+    float sum[STRIDE][STRIDE] = {0.0f};
+    for(int step_offset = 0; step_offset < K; step_offset += STEP) {
+        for (int i = 0; i < STRIDE; i++) {
+            for (int j = 0; j < STRIDE; j++) {
+                // Calculate the row and column indices for the shared memory
+                int smemRow = tx + i * BLOCK_SIZE;
+                int smemCol = ty + j * BLOCK_SIZE;
+
+                // Calcuate the row and column indices for the input matrix A
+                int aRow = row + i * STEP;
+                int aCol = step_offset + j * STEP;
+                if (aRow < M && aCol < K) {
+                    // Calculate the index for the input matrix A
+                    int ida = aRow * K + aCol;
+                    // Load the data from global memory to shared memory
+                    smem_a[smemRow][smemCol] = A[ida];
+                }
+
+                // Calculate the row and column indices for the input matrix B
+                int bRow = step_offset + i * STEP;
+                int bCol = col + j * STEP;
+                if (bRow < K && bCol < N) {
+                    // Calculate the index for the input matrix B
+                    int idb = bRow * N + bCol;
+                    // Load the data from global memory to shared memory
+                    smem_b[smemRow][smemCol] = B[idb];
+                }
+            }
+        }
+
+        __syncthreads();
+
+#pragma unroll
+        for (int i = 0; i < STRIDE; i++) {
+            for (int j = 0; j < STRIDE; j++) {
+                for (int k = 0; k < BLOCK_SIZE; k++) {
+                    // Calculate the row and column indices for the 'smea_a' shared memory
+                    int semaARow = tx + i * BLOCK_SIZE;
+                    int semaACol = k + j * BLOCK_SIZE;
+                    //  Calculate the row and column indices for the 'smem_b' shared memory
+                    int semaBRow = k + i * BLOCK_SIZE;
+                    int semaBCol = ty + j * BLOCK_SIZE;
+
+                    sum[i][j] += smem_a[semaARow][semaACol] * smem_b[semaBRow][semaBCol];
+                }
+            }
+        }
+
+        __syncthreads();
+    }
+
+    // Store the result in the output matrix C: to HBM
+    for (int i = 0; i < STRIDE; i++) {
+        for (int j = 0; j < STRIDE; j++) {
+            int cRow = row + i * STEP;
+            int cCol = col + j * STEP;
+
+            if (cRow < M && cCol < N) {
+                int idc = cRow * N + cCol;
+                C[idc] = sum[i][j];
+            }
+        }
+    }
 }
 
 #endif // CUDA_GEMM_SHAREDMEM_H

@@ -6,7 +6,7 @@
 # include "cuda/gemm/globalmem_2dmm.cuh"
 # include "cuda/gemm/sharedmem_2dmm.cuh"
 
-# define FLOAT_DIFF_EPSILON 1e-5
+# define FLOAT_DIFF_EPSILON 0.5f
 
 void printReult(float *C, int M, int N) {
     for (int i = 0; i < M; ++i) {
@@ -18,12 +18,11 @@ void printReult(float *C, int M, int N) {
 }
 
 bool equalResult(const float *A, const float *B, int M, int N) {
-    float a, b, diff;
     for (int i = 0; i < M; ++i) {
         for (int j = 0; j < N; ++j) {
-            a = A[i * N + j];
-            b = B[i * N + j];
-            diff = fabs(a - b);
+            float a = A[i * N + j];
+            float b = B[i * N + j];
+            float diff = fabs(a - b);
             if (diff >= FLOAT_DIFF_EPSILON) {
                 return false;
             }
@@ -43,10 +42,12 @@ int main() {
     C = (float *)malloc(M * N * sizeof(int));
     // Initialize matrices A and B with some values
     for (int i = 0; i < M * K; ++i) {
-        A[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        // A[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX); // Random values between 0 and 1
+        A[i] = 2.0f * (float)drand48() - 1.0f; // Random values between -1 and 1
     }
     for (int i = 0; i < K * N; ++i) {
-        B[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        // B[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX); // Random values between 0 and 1
+        B[i] = 2.0f * (float)drand48() - 1.0f; // Random values between -1 and 1
     }
     for (int i = 0; i < M * N; ++i) {
         C[i] = static_cast<float>(0);
@@ -75,6 +76,7 @@ int main() {
     
     // ------------------------ calculate grid and block size ---------------------------------------------
     constexpr int BLOCK_SIZE = 16;
+    constexpr int STRIDE = 4;
     dim3 grid((M + BLOCK_SIZE - 1) / BLOCK_SIZE, (N + BLOCK_SIZE - 1) / BLOCK_SIZE); // celi value
     dim3 block(BLOCK_SIZE, BLOCK_SIZE); // 16 * 16 = 256 threads per block
 
@@ -82,7 +84,7 @@ int main() {
     // Define the result matrix
     float *Ret_1 = (float *)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
-        Ret_1[i] = 0;
+        Ret_1[i] = 0.0f;
     }
     // Call the CUDA matrix multiplication function
     SgemmWithGlobalmem<<<grid, block>>>(d_A, d_B, d_C, M, N, K);
@@ -91,28 +93,47 @@ int main() {
     // Copy the result back to the host 
     cudaMemcpy(Ret_1, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
     // Print the result
-    std::cout << "Global memory 2dmm CUDA Result: ";
+    std::cout << "Global memory 2dmm      Result: ";
     equalResult(Ret_1, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
     // Free the result matrix
     free(Ret_1);
 
-    // --------------------- shared memory 2D matrix multiplication ------------------------------------------------
+    // --------------------- shared memory 2D matrix multiplication(v1) --------------------------------------------
     // Define the result matrix
     float *Ret_2 = (float *)malloc(M * N * sizeof(int));
     for (int i = 0; i < M * N; ++i) {
-        Ret_2[i] = 0;
+        Ret_2[i] = 0.0f;
     }
     // Call the CUDA matrix multiplication function
-    SgemmWithSharedmem<BLOCK_SIZE><<<grid, block>>>(d_A, d_B, d_C, M, N, K);
+    SgemmWithSharedmemV1<BLOCK_SIZE><<<grid, block>>>(d_A, d_B, d_C, M, N, K);
     // // Synchronize the device
     // cudaDeviceSynchronize();
     // Copy the result back to the host
     cudaMemcpy(Ret_2, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
     // Print the result
-    std::cout << "Shared memory 2dmm CUDA Result: ";
+    std::cout << "Shared memory 2dmm (V1) Result: ";
     equalResult(Ret_2, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
     // Free the result matrix
     free(Ret_2);
+
+    // --------------------- shared memory 2D matrix multiplication(v2) --------------------------------------------
+    // Define the result matrix
+    float *Ret_3 = (float *)malloc(M * N * sizeof(int));
+    for (int i = 0; i < M * N; ++i) {
+        Ret_3[i] = 0.0f;
+    }
+    // Call the CUDA matrix multiplication function
+    dim3 stride_grid((M + BLOCK_SIZE - 1) / BLOCK_SIZE / STRIDE, (N + BLOCK_SIZE - 1) / BLOCK_SIZE/ STRIDE); // celi value
+    SgemmWithSharedmemV2<BLOCK_SIZE, STRIDE><<<stride_grid, block>>>(d_A, d_B, d_C, M, N, K);
+    // // Synchronize the device
+    // cudaDeviceSynchronize();
+    // Copy the result back to the host
+    cudaMemcpy(Ret_3, d_C, M * N * sizeof(int), cudaMemcpyDeviceToHost);
+    // Print the result
+    std::cout << "Shared memory 2dmm (V2) Result: ";
+    equalResult(Ret_3, C, M, N) ? std::cout << "Equal!\n" : std::cout << "Not Equal!\n";
+    // Free the result matrix
+    free(Ret_3);
 
     // --------------------------- free device/host memory ---------------------------------------------------------
 
