@@ -3,6 +3,6 @@
 
 # include <cuda_runtime.h>
 
-__global__ void SgemmWithGlobalmem(float *a, float *b, float *c, int M, int N,int K);
+__global__ void SgemmWithGlobalmem(float *a, float *b, float *c, int M, int N, int K);
 
 #endif // CUDA_GEMM_NATIVE_H

@@ -4,17 +4,17 @@
 # include <cuda_runtime.h>
 
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,int K);
+__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N, int K);
 
 template <const int BLOCK_SIZE, const int STRIDE>
-__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N,int K);
+__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N, int K);
 
 // 矩阵乘法分块
 // 把数据搬到更快的存储器中（比如共享内存），共享内存的大小有限，利用分块实现对共享内存的利用
 // grid : (M/BLOCK_SIZE,N/BLOCK_SIZE)
 // block: (BLOCK_SIZE, BLOCK_SIZE)
 template <const int BLOCK_SIZE>
-__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,int K) {
+__global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N, int K) {
     // Calculate the row and column indices for the output matrix C
     int row = threadIdx.x + blockIdx.x * blockDim.x;
     int col = threadIdx.y + blockIdx.y * blockDim.y;
@@ -28,8 +28,8 @@ __global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,
     // Define the shared memory for A and B;
     // Each block share the shared memory for it's threads;
     // Shared memory size is BLOCK_SIZE * BLOCK_SIZE;
-    __shared__ int smem_a[BLOCK_SIZE][BLOCK_SIZE];
-    __shared__ int smem_b[BLOCK_SIZE][BLOCK_SIZE];
+    __shared__ float smem_a[BLOCK_SIZE][BLOCK_SIZE];
+    __shared__ float smem_b[BLOCK_SIZE][BLOCK_SIZE];
 
     // Each block is responsible for a small matrix block of size BLOCK_SIZE * BLOCK_SIZE in C
     // Each block's thread has K/BLOCK_SIZE iterations
@@ -72,7 +72,7 @@ __global__ void SgemmWithSharedmemV1(float *A, float *B, float *C, int M, int N,
 // Each thread's data: STRIDE * STRIDE
 // Each thread's step: BLOCK_SIZE * STRIDE
 template <const int BLOCK_SIZE, const int STRIDE>
-__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N,int K) {
+__global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N, int K) {
     // Rename the thread index for better readability
     int tx = threadIdx.x;
     int ty = threadIdx.y;
@@ -85,8 +85,8 @@ __global__ void SgemmWithSharedmemV2(float *A, float *B, float *C, int M, int N,
     // float *B_start = B + blockDim.y * blockIdx.y;
 
     const int STEP = BLOCK_SIZE * STRIDE;
-    __shared__ int smem_a[STEP][STEP];
-    __shared__ int smem_b[STEP][STEP];
+    __shared__ float smem_a[STEP][STEP];
+    __shared__ float smem_b[STEP][STEP];
 
     float sum[STRIDE][STRIDE] = {0.0f};
     for(int step_offset = 0; step_offset < K; step_offset += STEP) {
